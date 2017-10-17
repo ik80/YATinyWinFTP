@@ -12,6 +12,7 @@ Also uses TransmitFile for downloads which is virtually free. Borrows a bit of s
 from ftpdmin.
 
 HAS BUGS (one thing I`m sure of)
+
 HAS ZERO security hardening.
 
-Usage: TinyWinFTP.exe <Dir> <Port>
+Usage: TinyWinFTP.exe Dir Port
