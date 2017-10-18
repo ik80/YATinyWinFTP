@@ -199,13 +199,13 @@ namespace TinyWinFTP
 			_findclose(find_handle);
 		}
 
-		if (!UseCtrlConn && !rep.content.empty())
+		if (!UseCtrlConn) 
 		{
-			asio::write(pSession->getDataSocket(), asio::buffer(rep.content), asio::transfer_all());
-			rep.content.clear();
-		}
-
-		if (!UseCtrlConn) {
+			if (!rep.content.empty())
+			{
+				asio::write(pSession->getDataSocket(), asio::buffer(rep.content), asio::transfer_all());
+				rep.content.clear();
+			}
 			pSession->closeDataSocket();
 			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::transfer_complete, sizeof(StatusStrings::transfer_complete) -1), asio::transfer_all());
 		}
