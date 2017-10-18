@@ -37,6 +37,11 @@ namespace TinyWinFTP
 		int curMaxPassivePort;
 		LFMPMCQueue<int> reusablePassivePorts;
 
+		template <typename T>
+		void TinyFTPRequestHandler::SyncSend(T responseString, TinyFTPSession* pSession)
+		{
+			asio::write(pSession->getSocket(), asio::buffer(responseString, sizeof(responseString) - 1), asio::transfer_all());
+		}
 
 		void ServiceStorCommand(char *filename, const TinyFTPRequest& req, TinyFTPReply& rep, TinyFTPSession* pSession);
 		void ServiceRetrCommand(char *filename, const TinyFTPRequest& req, TinyFTPReply& rep, TinyFTPSession* pSession);
