@@ -15,7 +15,7 @@ namespace TinyWinFTP
 	class TinyFTPServer
 	{
 	public:
-		TinyFTPServer(std::string docRoot, short port);
+		TinyFTPServer(std::string in_docRoot, short port);
 
 		// start the server
 		void run();
@@ -48,6 +48,8 @@ namespace TinyWinFTP
 		// acceptor and listener socket
 		std::shared_ptr<asio::ip::tcp::acceptor> tcpAcceptor;
 		std::shared_ptr<asio::ip::tcp::socket> listenSocket;
+
+		std::string docRoot;
 	};
 }
 

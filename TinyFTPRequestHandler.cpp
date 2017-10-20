@@ -18,13 +18,11 @@
 #include "TinyFTPSession.h"
 #include "TinyFTPRequest.h"
 #include "TinyFTPReply.h"
-#include "TinyFTPPaths.h"
 
 namespace TinyWinFTP
 {
-	TinyFTPRequestHandler::TinyFTPRequestHandler(const std::string& in_docRoot)
-		: docRoot(in_docRoot),
-		rnFrString(""),
+	TinyFTPRequestHandler::TinyFTPRequestHandler()
+		: rnFrString(""),
 		curMaxPassivePort(PASV_PORT_RANGE_START),
 		reusablePassivePorts(8192)
 	{
@@ -111,10 +109,44 @@ namespace TinyWinFTP
 		rep.content = RepBuf;
 	}
 
+	namespace 
+	{
+		char* numToMonth(WORD month) 
+		{
+			switch (month) 
+			{
+			case 1:
+				return "Jan";
+			case 2:
+				return "Feb";
+			case 3:
+				return "Mar";
+			case 4:
+				return "Apr";
+			case 5:
+				return "May";
+			case 6:
+				return "Jun";
+			case 7:
+				return "Jul";
+			case 8:
+				return "Aug";
+			case 9:
+				return "Sep";
+			case 10:
+				return "Oct";
+			case 11:
+				return "Nov";
+			case 12:
+				return "Dec";
+			}
+			return "";
+		}
+	}
+
 	void TinyFTPRequestHandler::ServiceListCommands(char *filename, BOOL Long, BOOL UseCtrlConn, const TinyFTPRequest& req, TinyFTPReply& rep, TinyFTPSession* pSession)
 	{
 		char repbuf[MAX_REPLY_LEN];
-		int a;
 		BOOL ListAll = FALSE;
 
 		if (!UseCtrlConn)
@@ -130,73 +162,59 @@ namespace TinyWinFTP
 		}
 
 		{
-			struct _finddata_t finddata;
-			long find_handle;
+			WIN32_FIND_DATAA ffd;
+			size_t length_of_arg;
+			HANDLE hFind = INVALID_HANDLE_VALUE;
+			DWORD dwError = 0;
 
-			if (*filename == 0) filename = "*";
-			if (*filename == '-') 
+			length_of_arg = strnlen_s(filename, TinyFTPSession::MAX_PATH_32K);
+			if (length_of_arg > (TinyFTPSession::MAX_PATH_32K - 3))
+				abort();
+
+			strncat_s(filename, TinyFTPSession::MAX_PATH_32K, "\\*", strlen("\\*"));
+			// Find the first file in the directory.
+			hFind = FindFirstFileA(filename, &ffd);
+
+			if (INVALID_HANDLE_VALUE == hFind)
+				return;
+
+			do
 			{
-				for (a = 1; filename[a]; a++) 
-				{
-					if (filename[a] == 'a' || filename[a] == 'A') ListAll = TRUE;
-					if (filename[a] == 'l') Long = TRUE;
-				}
-				filename = "*";
-			}
-
-			find_handle = _findfirst(filename, &finddata);
-
-			for (;;) 
-			{
-				char timestr[20];
-				if (find_handle == -1) break;
-
-				if (!strcmp(finddata.name, "."))
-				{
-					if (_findnext(find_handle, &finddata) != 0) break;
+				if (!strncmp(ffd.cFileName, ".", TinyFTPSession::MAX_PATH_32K) || !strncmp(ffd.cFileName, "..", TinyFTPSession::MAX_PATH_32K))
 					continue;
-				}
-				if (!strcmp(finddata.name, ".."))
-				{
-					if (_findnext(find_handle, &finddata) != 0) break;
-					continue;
-				}
 
 				if (Long)
 				{
-					struct tm tm;
 					char DirAttr;
 					char WriteAttr;
 
-					// Call mktime to get weekday and such filled in.
-					localtime_s(&tm, &finddata.time_write);
-					strftime(timestr, 20, "%b %d  %Y", &tm);
+					SYSTEMTIME stUTC, stLocal;
+					// Convert the last-write time to local time.
+					FileTimeToSystemTime(&ffd.ftLastWriteTime, &stUTC);
+					SystemTimeToTzSpecificLocalTime(NULL, &stUTC, &stLocal);
 
-					if (finddata.attrib & (_A_HIDDEN | _A_SYSTEM))
-						if (!ListAll)
-						{
-							if (_findnext(find_handle, &finddata) != 0) break;
-							continue;
-						}
+					char timeStringBuf[128];
 
-					DirAttr = finddata.attrib & _A_SUBDIR ? 'd' : '-';
-					WriteAttr = finddata.attrib & _A_RDONLY ? '-' : 'w';
+					// Build a string showing the date and time.
+					snprintf(timeStringBuf, 128, "%s %02d  %04d", numToMonth(stLocal.wMonth), stLocal.wDay, stLocal.wYear);
 
-					snprintf(repbuf, MAX_REPLY_LEN, "%cr%c-r%c-r%c-   1 root  root    %7u %s %s\r\n",
+					DirAttr = (ffd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) ? 'd' : '-';
+					WriteAttr = (ffd.dwFileAttributes & FILE_ATTRIBUTE_READONLY) ? '-' : 'w';
+
+					uint64_t fileSize = ((uint64_t)ffd.nFileSizeHigh << 32) + ffd.nFileSizeLow;
+					snprintf(repbuf, MAX_REPLY_LEN, "%cr%c-r%c-r%c-   1 root  root    %7llu %s %s\r\n",
 						DirAttr, WriteAttr, WriteAttr, WriteAttr,
-						(unsigned)finddata.size,
-						timestr,
-						finddata.name);
+						fileSize,
+						timeStringBuf,
+						ffd.cFileName);
 				}
 				else
 				{
-					snprintf(repbuf, MAX_REPLY_LEN, "%s\r\n", finddata.name);
+					snprintf(repbuf, MAX_REPLY_LEN, "%s\r\n", ffd.cFileName);
 				}
 				rep.content += std::string(repbuf);
-
-				if (_findnext(find_handle, &finddata) != 0) break;
-			}
-			_findclose(find_handle);
+			} while (FindNextFileA(hFind, &ffd) != 0);
+			FindClose(hFind);
 		}
 
 		if (!UseCtrlConn) 
@@ -214,8 +232,8 @@ namespace TinyWinFTP
 	void TinyFTPRequestHandler::handleRequest(const TinyFTPRequest& req, TinyFTPReply& rep, TinyFTPSession* pSession)
 	{
 		rep.content.clear();
-		char buf[MAX_PATH + 10];
-		strncpy_s(buf, req.param.c_str(), MAX_PATH + 10);
+		char buf[TinyFTPSession::MAX_PATH_32K];
+		strncpy_s(buf, req.param.c_str(), TinyFTPSession::MAX_PATH_32K);
 		char repbuf[MAX_REPLY_LEN];
 		int pasvPort;
 		char * NewPath;
@@ -248,13 +266,19 @@ namespace TinyWinFTP
 			break;
 
 		case TinyFTPRequest::XPWD:
-		case TinyFTPRequest::PWD: // Print working directory
-			snprintf(repbuf, MAX_REPLY_LEN, "257 \"%s\"\r\n", MyGetDir());
-			rep.content = std::string(repbuf);
+		case TinyFTPRequest::PWD: // Print working directory 
+			{
+				std::string sessionCurDir = pSession->getCurDir();
+				std::replace(sessionCurDir.begin(), sessionCurDir.end(), '\\', '/');
+				snprintf(repbuf, MAX_REPLY_LEN, "257 \"%s\"\r\n", sessionCurDir.c_str());
+				rep.content = std::string(repbuf);
+			}
 			break;
 
 		case TinyFTPRequest::NLST: // Request directory, names only.
-			NewPath = TranslatePath(buf);
+			if (!strncmp(buf, "-la", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-l", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-a", TinyFTPSession::MAX_PATH_32K))
+				strncpy_s(buf, "", TinyFTPSession::MAX_PATH_32K);
+			NewPath = pSession->translatePath(buf);
 			if (NewPath == NULL) 
 			{
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
@@ -264,7 +288,9 @@ namespace TinyWinFTP
 			break;
 
 		case TinyFTPRequest::LIST: // Request directory, long version.
-			NewPath = TranslatePath(buf);
+			if (!strncmp(buf, "-la", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-l", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-a", TinyFTPSession::MAX_PATH_32K))
+				strncpy_s(buf, "", TinyFTPSession::MAX_PATH_32K);
+			NewPath = pSession->translatePath(buf);
 			if (NewPath == NULL) 
 			{
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
@@ -273,7 +299,9 @@ namespace TinyWinFTP
 			break;
 
 		case TinyFTPRequest::STAT: // Just like LIST, but use control connection.
-			NewPath = TranslatePath(buf);
+			if (!strncmp(buf, "-la", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-l", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-a", TinyFTPSession::MAX_PATH_32K))
+				strncpy_s(buf, "", TinyFTPSession::MAX_PATH_32K);
+			NewPath = pSession->translatePath(buf);
 			if (NewPath == NULL) 
 			{
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
@@ -281,9 +309,9 @@ namespace TinyWinFTP
 			}
 			ServiceListCommands(NewPath, TRUE, TRUE, req, rep, pSession);
 			break;
-
+				
 		case TinyFTPRequest::DELE:
-			NewPath = TranslatePath(buf);
+			NewPath = pSession->translatePath(buf);
 			if (NewPath == NULL) 
 			{
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
@@ -299,7 +327,7 @@ namespace TinyWinFTP
 		case TinyFTPRequest::MKD:
 		case TinyFTPRequest::XMKD:
 		case TinyFTPRequest::XRMD:
-			NewPath = TranslatePath(buf);
+			NewPath = pSession->translatePath(buf);
 			if (NewPath == NULL) 
 			{
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
@@ -321,7 +349,7 @@ namespace TinyWinFTP
 			break;
 
 		case TinyFTPRequest::RNFR:
-			NewPath = TranslatePath(buf);
+			NewPath = pSession->translatePath(buf);
 			if (NewPath) 
 			{
 				strncpy_s(repbuf, NewPath, MAX_REPLY_LEN);
@@ -334,7 +362,7 @@ namespace TinyWinFTP
 
 		case TinyFTPRequest::RNTO:
 			// Must be immediately preceeded by RNFR!
-			NewPath = TranslatePath(buf);
+			NewPath = pSession->translatePath(buf);
 			if (rename(rnFrString.c_str(), NewPath))
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) -1), asio::transfer_all());
 			else 
@@ -348,7 +376,7 @@ namespace TinyWinFTP
 
 		case TinyFTPRequest::xSIZE:
 		case TinyFTPRequest::MDTM:
-			NewPath = TranslatePath(buf);
+			NewPath = pSession->translatePath(buf);
 			if (NewPath == NULL) 
 			{
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
@@ -358,7 +386,7 @@ namespace TinyWinFTP
 			break;
 
 		case TinyFTPRequest::CWD: // Change working directory
-			if (!MySetDir(buf)) 
+			if (!pSession->setCurDir(buf)) 
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::cwd_failed, sizeof(StatusStrings::cwd_failed) -1), asio::transfer_all());
 			else 
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::cwd_successful, sizeof(StatusStrings::cwd_successful) -1), asio::transfer_all());
@@ -380,7 +408,7 @@ namespace TinyWinFTP
 		break;
 
 		case TinyFTPRequest::RETR: // Retrieve File and send it
-			NewPath = TranslatePath(buf);
+			NewPath = pSession->translatePath(buf);
 				if (NewPath == NULL) 
 			{
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
@@ -390,7 +418,7 @@ namespace TinyWinFTP
 			break;
 
 		case TinyFTPRequest::STOR: // Store the file.
-			NewPath = TranslatePath(buf);
+			NewPath = pSession->translatePath(buf);
 			if (NewPath == NULL) 
 			{
 				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
@@ -407,9 +435,15 @@ namespace TinyWinFTP
 			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::bye, sizeof(StatusStrings::bye) -1), asio::transfer_all());
 			// TODO: close session and free passv port
 
+		case TinyFTPRequest::FEAT:
+		case TinyFTPRequest::OPTS:
+		case TinyFTPRequest::sFEAT:
+		case TinyFTPRequest::sOPTS:
+		case TinyFTPRequest::sSYST:
+		case TinyFTPRequest::sSITE:
 		case TinyFTPRequest::SITE:
 		default: // Any command not implemented, return not recognized response.
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::unimplemented_command, sizeof(StatusStrings::unimplemented_command) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::unknown_command, sizeof(StatusStrings::unknown_command) -1), asio::transfer_all());
 			rep.content.clear();
 			break;
 		}

@@ -91,7 +91,7 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>_CRTDBG_MAP_ALLOC;ASIO_STANDALONE;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASIO_STANDALONE;WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -119,7 +119,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>_CRTDBG_MAP_ALLOC;ASIO_STANDALONE;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ASIO_STANDALONE;WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,7 +151,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FastSubstringMatcher.cpp" />
-    <ClCompile Include="TinyFTPPaths.cpp" />
     <ClCompile Include="TinyFTPReply.cpp" />
     <ClCompile Include="TinyFTPRequestHandler.cpp" />
     <ClCompile Include="TinyFTPRequestParser.cpp" />
@@ -161,7 +161,6 @@
   <ItemGroup>
     <ClInclude Include="FastSubstringMatcher.h" />
     <ClInclude Include="LFMPMCQueue.h" />
-    <ClInclude Include="TinyFTPPaths.h" />
     <ClInclude Include="TinyFTPReply.h" />
     <ClInclude Include="TinyFTPRequest.h" />
     <ClInclude Include="TinyFTPRequestHandler.h" />

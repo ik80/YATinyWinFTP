@@ -1,6 +1,7 @@
 #include <functional>
 
 #include <iostream>
+#include <regex>
 
 #include <asio\io_service.hpp>
 #include <asio\placeholders.hpp>
@@ -56,7 +57,7 @@ namespace TinyWinFTP
 		realOverlapped->Offset = offsetLow;
 		realOverlapped->OffsetHigh = offsetHigh;
 
-		//std::cout << "::TransmitFile, bytes " << bytesToWrite << ", offset " << offset <<  std::endl;
+		std::cout << "::TransmitFile, bytes " << bytesToWrite << ", offset " << offset <<  std::endl;
 
 		BOOL ok = ::TransmitFile(socket.native_handle(), file.native_handle(), bytesToWrite, 0, realOverlapped, 0, 0);
 		DWORD last_error = ::GetLastError();
@@ -79,8 +80,7 @@ namespace TinyWinFTP
 		}
 	}
 
-	TinyFTPSession::TinyFTPSession(asio::io_service& in_ioService, asio::ip::tcp::socket&& in_socket,
-		TinyFTPRequestHandler& handler, TinyFTPRequestParser& parser)
+	TinyFTPSession::TinyFTPSession(asio::io_service& in_ioService, asio::ip::tcp::socket&& in_socket, TinyFTPRequestHandler& handler, TinyFTPRequestParser& parser, std::string in_docRoot)
 		: service(in_ioService),
 		socket(std::move(in_socket)),
 		requestHandler(handler),
@@ -89,23 +89,43 @@ namespace TinyWinFTP
 		pasvPort(-1),
 		fileToSend(in_ioService)
 	{
+		docRoot = in_docRoot;
+		std::replace(docRoot.begin(), docRoot.end(), '/', '\\');
+		while (*docRoot.rbegin() == '\\' && docRoot.size() > 1)
+			docRoot = docRoot.substr(0,docRoot.size() - 1);
+		curDirectory = "\\";
+
 		fileBytesTotal.QuadPart = 0;
 		dataOpInProgress = false;
 		dataSocketConnected = false;
-		//std::cout << "Session created" << std::endl;
+		std::cout << "Session created" << std::endl;
 	}
 
 	TinyFTPSession::~TinyFTPSession() 
 	{
 		asio::error_code ignored_ec;
 		socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored_ec);
+
 		if (socketData.get())
 			socketData->shutdown(asio::ip::tcp::socket::shutdown_both, ignored_ec);
 		if (fileToSend.is_open())
 			fileToSend.close();
+
+		if (tcpAcceptor.get())
+		{
+			tcpAcceptor->cancel();
+			tcpAcceptor->close();
+			tcpAcceptor.reset();
+		}
+		if (pasvPort != -1)
+		{
+			requestHandler.releasePassivePort(pasvPort);
+			pasvPort = -1;
+		}
+
 		fileBytesTotal.QuadPart = 0;
 		fileBytesSent = 0;
-		//std::cout << "Session destroyed" << std::endl;
+		std::cout << "Session destroyed" << std::endl;
 	}
 
 	void TinyFTPSession::start()
@@ -113,7 +133,7 @@ namespace TinyWinFTP
 		asio::async_write(socket, asio::buffer(WELCOME_STRING, strlen(WELCOME_STRING)),
 			std::bind(&TinyFTPSession::handleWriteControl, shared_from_this(),
 				std::placeholders::_1));
-		//std::cout << "Session started" << std::endl;
+		std::cout << "Session started" << std::endl;
 	}
 
 	void TinyFTPSession::handleReadControl(const asio::error_code& e, std::size_t bytes_transferred)
@@ -121,7 +141,7 @@ namespace TinyWinFTP
 		if (!e)
 		{
 			char * beginBuffer = buffer.data(), *endBuffer = buffer.data() + bytes_transferred;
-			//std::cout << "Control channel:" << std::string(beginBuffer, endBuffer);
+			std::cout << "Control channel:" << std::string(beginBuffer, endBuffer);
 			TinyFTPRequestParser::ParserResult result = requestParser.parse(request, beginBuffer, endBuffer);
 
 			if (result == TinyFTPRequestParser::SUCCESS)
@@ -134,25 +154,25 @@ namespace TinyWinFTP
 				else if (!dataOpInProgress)
 				{
 					socket.async_read_some(asio::buffer(buffer.data(), buffer.max_size()), std::bind(&TinyFTPSession::handleReadControl, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-					//std::cout << "Control channel: resuming" << std::endl;
+					std::cout << "Control channel: resuming" << std::endl;
 				}
 			}
 			else if (result == TinyFTPRequestParser::FAIL)
 			{
-				//std::cout << "Control channel: failed to parse" << std::endl;
+				std::cout << "Control channel: failed to parse" << std::endl;
 				reply.content = StatusStrings::bad_request;
 				asio::async_write(socket, asio::buffer(reply.content.data(), reply.content.size()), std::bind(&TinyFTPSession::handleWriteControl, shared_from_this(), std::placeholders::_1));
 			}
 			else if (result == TinyFTPRequestParser::NEEDMORE) 
 			{
-				//std::cout << "Control channel: underrun" << std::endl;
+				std::cout << "Control channel: underrun" << std::endl;
 				socket.async_read_some(asio::buffer(buffer.data(), buffer.max_size()), std::bind(&TinyFTPSession::handleReadControl, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-				//std::cout << "Control channel: resuming" << std::endl;
+				std::cout << "Control channel: resuming" << std::endl;
 			}
 		}
 		else
 		{
-			//std::cout << "Control channel: error on read" << std::endl;
+			std::cout << "Control channel: error on read" << std::endl;
 			// Initiate graceful TinyFTPSession closure.
 			asio::error_code ignored_ec;
 			socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored_ec);
@@ -167,14 +187,14 @@ namespace TinyWinFTP
 		if (!e)
 		{
 			std::lock_guard<std::mutex> buffersGuard(uploadBuffers.queueMutex);
-			//std::cout << "Data channel: upload: read " << bytes_transferred << " bytes" << std::endl;
+			std::cout << "Data channel: upload: read " << bytes_transferred << " bytes" << std::endl;
 
 			uploadBuffers.fullBuffers.emplace_back(bytes_transferred,uploadBuffers.curNetworkBuffer);
 			uploadBuffers.curNetworkBuffer = 0;
 
 			if (uploadBuffers.emptyBuffers.empty()) 
 			{
-				//std::cout << "Data channel: upload: not enough network buffers, starved" << std::endl;
+				std::cout << "Data channel: upload: not enough network buffers, starved" << std::endl;
 				uploadBuffers.starved = true;
 			}
 			else 
@@ -197,28 +217,28 @@ namespace TinyWinFTP
 
 				if (selectRes) 
 				{
-					//std::cout << "Data channel: upload: socket ready" << std::endl;
+					std::cout << "Data channel: upload: socket ready" << std::endl;
 
 					unsigned long bytes_available;
 					ioctlsocket(socketData->native_handle(), FIONREAD, &bytes_available);
 					if (bytes_available) 
 					{
-						//std::cout << "Data channel: upload: socket ready: has data" << std::endl;
+						std::cout << "Data channel: upload: socket ready: has data" << std::endl;
 						auto buffersFront = std::move(uploadBuffers.emptyBuffers.front());
 						uploadBuffers.curNetworkBuffer = buffersFront.second;
 						uploadBuffers.emptyBuffers.pop_front();
 						socketData->async_read_some(asio::buffer(uploadBuffers.curNetworkBuffer->data(), uploadBuffers.curNetworkBuffer->max_size()), std::bind(&TinyFTPSession::handleReadData, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-						//std::cout << "Data channel: upload: reading" << std::endl;
+						std::cout << "Data channel: upload: reading" << std::endl;
 					}
 					else 
 					{
-						//std::cout << "Data channel: upload: network read complete" << std::endl;
+						std::cout << "Data channel: upload: network read complete" << std::endl;
 						uploadBuffers.noMoreReads = true;
 					}
 				}
 				else 
 				{
-					//std::cout << "Data channel: upload: timeout error, shutting down both sockets, closing files" << std::endl;
+					std::cout << "Data channel: upload: timeout error, shutting down both sockets, closing files" << std::endl;
 					asio::error_code ignored_ec;
 					socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored_ec);
 					if (socketData.get())
@@ -232,7 +252,7 @@ namespace TinyWinFTP
 
 			if (!uploadBuffers.writeInProgress) 
 			{
-				//std::cout << "Data channel: upload: no disk write in progress, starting" << std::endl;
+				std::cout << "Data channel: upload: no disk write in progress, starting" << std::endl;
 				uploadBuffers.writeInProgress = true;
 				auto buffersFront = std::move(uploadBuffers.fullBuffers.front());
 				uploadBuffers.curDiskBuffer = buffersFront.second;
@@ -249,7 +269,7 @@ namespace TinyWinFTP
 		}
 		else
 		{
-			//std::cout << "Data channel: upload: error, shutting down data socket" << std::endl;
+			std::cout << "Data channel: upload: error, shutting down data socket" << std::endl;
 			// Initiate graceful TinyFTPSession closure.
 			asio::error_code ignored_ec;
 			if (socketData.get())
@@ -261,7 +281,7 @@ namespace TinyWinFTP
 	{
 		if (!e)
 		{
-			//std::cout << "Disk write: written " << bytes_transferred << " bytes" <<std::endl;
+			std::cout << "Disk write: written " << bytes_transferred << " bytes" <<std::endl;
 			std::lock_guard<std::mutex> buffersGuard(uploadBuffers.queueMutex);
 
 			uploadBuffers.emptyBuffers.emplace_back(0,uploadBuffers.curDiskBuffer);
@@ -269,33 +289,33 @@ namespace TinyWinFTP
 
 			if (uploadBuffers.starved)
 			{
-				//std::cout << "Disk write: network was starved for buffers" << std::endl;
+				std::cout << "Disk write: network was starved for buffers" << std::endl;
 				uploadBuffers.starved = false;
 				auto buffersFront = std::move(uploadBuffers.emptyBuffers.front());
 				uploadBuffers.curNetworkBuffer = buffersFront.second;
 				uploadBuffers.emptyBuffers.pop_front();
 				socketData->async_read_some(asio::buffer(uploadBuffers.curNetworkBuffer->data(), uploadBuffers.curNetworkBuffer->max_size()), std::bind(&TinyFTPSession::handleReadData, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-				//std::cout << "Data channel: upload: restarting read from socket, after disk write released a free buffer" << std::endl;
+				std::cout << "Data channel: upload: restarting read from socket, after disk write released a free buffer" << std::endl;
 			}
 
 			if (uploadBuffers.fullBuffers.empty())
 			{
-				//std::cout << "Disk write: write buffers empty: stopping disk write" << std::endl;
+				std::cout << "Disk write: write buffers empty: stopping disk write" << std::endl;
 				uploadBuffers.writeInProgress = false;
 				if (uploadBuffers.noMoreReads) 
 				{
-					//std::cout << "Disk write: write buffers empty: network wont read more data" << std::endl;
+					std::cout << "Disk write: write buffers empty: network wont read more data" << std::endl;
 					uploadBuffers.noMoreReads = false;
 					uploadBuffers.starved = false;
 					dataOpInProgress = false;
 					closeDataSocket();
 					if (fileToSend.is_open())
 						fileToSend.close();
-					//std::cout << "Disk write: write buffers empty: network wont read more data: closing socket and file" << std::endl;
+					std::cout << "Disk write: write buffers empty: network wont read more data: closing socket and file" << std::endl;
 
 					asio::write(getSocket(), asio::buffer(StatusStrings::transfer_complete, sizeof(StatusStrings::transfer_complete) - 1), asio::transfer_all());
 					socket.async_read_some(asio::buffer(buffer.data(), buffer.max_size()), std::bind(&TinyFTPSession::handleReadControl, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-					//std::cout << "Control channel: resuming" << std::endl;
+					std::cout << "Control channel: resuming" << std::endl;
 				}
 			}
 			else 
@@ -311,12 +331,12 @@ namespace TinyWinFTP
 				totalBytes += fileBytesTotal.LowPart;
 
 				fileToSend.async_write_some_at(totalBytes, asio::buffer(uploadBuffers.curDiskBuffer->data(), bytesToWrite), std::bind(&TinyFTPSession::handleWriteDisk, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-				//std::cout << "Disk write: writing data" << std::endl;
+				std::cout << "Disk write: writing data" << std::endl;
 			}
 		}
 		else
 		{
-			//std::cout << "Disk write: error: closing both sockets and file" << std::endl;
+			std::cout << "Disk write: error: closing both sockets and file" << std::endl;
 			// Initiate graceful TinyFTPSession closure.
 			asio::error_code ignored_ec;
 			socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored_ec);
@@ -333,19 +353,19 @@ namespace TinyWinFTP
 	{
 		if (!e)
 		{
-			//std::cout << "Control channel: write complete" << std::endl;
+			std::cout << "Control channel: write complete" << std::endl;
 			if (!dataOpInProgress)
 			{
 				socket.async_read_some(asio::buffer(buffer.data(), buffer.max_size()),
 					std::bind(&TinyFTPSession::handleReadControl, shared_from_this(),
 						std::placeholders::_1,
 						std::placeholders::_2));
-				//std::cout << "Control channel: resuming" << std::endl;
+				std::cout << "Control channel: resuming" << std::endl;
 			}
 		}
 		else 
 		{
-			//std::cout << "Control channel: write error, closing both sockets and file" << std::endl;
+			std::cout << "Control channel: write error, closing both sockets and file" << std::endl;
 			// Initiate graceful TinyFTPSession closure.
 			asio::error_code ignored_ec;
 			socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored_ec);
@@ -362,7 +382,7 @@ namespace TinyWinFTP
 	{
 		if (!e)
 		{
-			//std::cout << "Data channel: write complete" << std::endl;
+			std::cout << "Data channel: write complete" << std::endl;
 			bool expectedState = true;
 			if (dataOpInProgress.compare_exchange_strong(expectedState, false) == true)
 			{
@@ -371,7 +391,7 @@ namespace TinyWinFTP
 				fileBytesTotalBytes += fileBytesTotal.LowPart;
 				if (fileBytesTotalBytes - fileBytesSent <= TRANSMIT_FILE_LIMIT)
 				{
-					//std::cout << "Data channel: write complete: file sent" << std::endl;
+					std::cout << "Data channel: write complete: file sent" << std::endl;
 					fileBytesTotal.QuadPart = 0;
 					fileBytesSent = 0;
 					closeDataSocket();
@@ -380,11 +400,11 @@ namespace TinyWinFTP
 
 					asio::write(getSocket(), asio::buffer(StatusStrings::transfer_complete, sizeof(StatusStrings::transfer_complete) - 1), asio::transfer_all());
 					socket.async_read_some(asio::buffer(buffer.data(), buffer.max_size()), std::bind(&TinyFTPSession::handleReadControl, shared_from_this(), std::placeholders::_1, std::placeholders::_2));
-					//std::cout << "Control channel: resuming" << std::endl;
+					std::cout << "Control channel: resuming" << std::endl;
 				}
 				else 
 				{
-					//std::cout << "Data channel: write complete: sending next chunk" << std::endl;
+					std::cout << "Data channel: write complete: sending next chunk" << std::endl;
 					dataOpInProgress = true; // race! race here!
 					fileBytesSent += TRANSMIT_FILE_LIMIT;
 					transmit_file(*socketData, fileToSend, std::bind(&TinyFTPSession::handleWriteData, shared_from_this(), std::placeholders::_1), fileBytesSent, fileBytesTotal);
@@ -395,7 +415,7 @@ namespace TinyWinFTP
 		}
 		else
 		{
-			//std::cout << "Data channel: write error: closing both sockets and file" << std::endl;
+			std::cout << "Data channel: write error: closing both sockets and file" << std::endl;
 			// Initiate graceful TinyFTPSession closure.
 			asio::error_code ignored_ec;
 			socket.shutdown(asio::ip::tcp::socket::shutdown_both, ignored_ec);
@@ -411,7 +431,7 @@ namespace TinyWinFTP
 	// sets pasv port to use for this connection
 	void TinyFTPSession::setPasvPort(int port) 
 	{
-		//std::cout << "Pasv port opened " << port << std::endl;
+		std::cout << "Pasv port opened " << port << std::endl;
 		pasvPort = port;
 		tcpAcceptor.reset(new asio::ip::tcp::acceptor(service, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), pasvPort)));
 	}
@@ -419,7 +439,7 @@ namespace TinyWinFTP
 	// starts data socket up in remote mode
 	void TinyFTPSession::startDataSocketRemote()
 	{
-		//std::cout << "Data channel: starting in standard mode" << std::endl;
+		std::cout << "Data channel: starting in standard mode" << std::endl;
 		unsigned long addr;
 		unsigned short port;
 
@@ -452,29 +472,32 @@ namespace TinyWinFTP
 		socketData->connect(remoteEndpoint);
 		socketData->set_option(asio::ip::tcp::no_delay(false));
 		dataSocketConnected = true;
-		//std::cout << "Data channel: started" << std::endl;
+		std::cout << "Data channel: started" << std::endl;
 	}
 
 	// starts data socket up in pasv mode
 	void TinyFTPSession::startDataSocketPasv() 
 	{
-		//std::cout << "Data channel: starting in pasv mode" << std::endl;
+		std::cout << "Data channel: starting in pasv mode" << std::endl;
 		socketData.reset(new asio::ip::tcp::socket(service));
 		tcpAcceptor->accept(*socketData);
 		socketData->set_option(asio::ip::tcp::no_delay(false));
 		dataSocketConnected = true;
-		//std::cout << "Data channel: started" << std::endl;
+		std::cout << "Data channel: started" << std::endl;
 	}
 
 	// close data socket
 	void TinyFTPSession::closeDataSocket() 
 	{
-		//std::cout << "Data channel: closing socket" << std::endl;
+		std::cout << "Data channel: closing socket" << std::endl;
 		socketData->close();
 		socketData.reset();
-		tcpAcceptor->cancel();
-		tcpAcceptor->close();
-		tcpAcceptor.reset();
+		if (tcpAcceptor.get()) 
+		{
+			tcpAcceptor->cancel();
+			tcpAcceptor->close();
+			tcpAcceptor.reset();
+		}
 		if (pasvPort != -1)
 		{
 			requestHandler.releasePassivePort(pasvPort);
@@ -492,7 +515,7 @@ namespace TinyWinFTP
 
 	void TinyFTPSession::startFileTransfer(std::string filename_)
 	{
-		//std::cout << "Data channel: starting file transfer" << std::endl;
+		std::cout << "Data channel: starting file transfer" << std::endl;
 		asio::error_code ec;
 		fileToSend.assign(::CreateFileA(filename_.c_str(), GENERIC_READ, 0, 0,
 			OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, 0), ec);
@@ -505,7 +528,7 @@ namespace TinyWinFTP
 
 	void TinyFTPSession::startFileUpload(std::string filename_)
 	{
-		//std::cout << "Data channel: starting file upload" << std::endl;
+		std::cout << "Data channel: starting file upload" << std::endl;
 		if (fileToSend.is_open())
 			fileToSend.close();
 		fileBytesTotal.QuadPart = 0;
@@ -543,7 +566,7 @@ namespace TinyWinFTP
 
 	TinyFTPUploadBuffers::TinyFTPUploadBuffers() : isInitialized(false), starved(false), writeInProgress(false), noMoreReads(false)
 	{
-		//std::cout << "Upload buffers created" << std::endl;
+		std::cout << "Upload buffers created" << std::endl;
 	}
 
 	TinyFTPUploadBuffers::~TinyFTPUploadBuffers() 
@@ -560,7 +583,7 @@ namespace TinyWinFTP
 			fullBuffers.pop_front();
 			delete pBuffer.second;
 		} 
-		//std::cout << "Upload buffers destroyed" << std::endl;
+		std::cout << "Upload buffers destroyed" << std::endl;
 	}
 
 	void TinyFTPUploadBuffers::init() 
@@ -569,6 +592,87 @@ namespace TinyWinFTP
 		emptyBuffers.emplace_front(0, new std::array<char, RECV_BUFFER_SIZE>());
 		emptyBuffers.emplace_front(0, new std::array<char, RECV_BUFFER_SIZE>());
 		isInitialized = true;
-		//std::cout << "Upload buffers initialized" << std::endl;
+		std::cout << "Upload buffers initialized" << std::endl;
 	}
+
+	bool TinyFTPSession::setCurDir(char * szNewCurDir) 
+	{
+		bool res = false;
+
+		// replace all slashes
+		size_t inputLen = strlen(szNewCurDir);
+		for (size_t pos = 0; pos < inputLen; ++pos)
+			if (szNewCurDir[pos] == '/')
+				szNewCurDir[pos] = '\\';
+
+		// check for first slash (absolute path), combine with root as necessary
+		std::string newCombinedRoot;
+		if (szNewCurDir[0] == '\\')
+			newCombinedRoot = docRoot + szNewCurDir;
+		else 
+			newCombinedRoot = docRoot + curDirectory + (curDirectory =="\\" ? "" : "\\") + szNewCurDir;
+		newCombinedRoot = std::regex_replace(newCombinedRoot, std::regex("\\\\[^\\\\]*\\\\\\.\\."), "");
+		newCombinedRoot = std::regex_replace(newCombinedRoot, std::regex("\\\\\\\\"), "\\");
+		while (newCombinedRoot.size() > 1 && *newCombinedRoot.rbegin() == '.')
+			newCombinedRoot = newCombinedRoot.substr(0, newCombinedRoot.size() - 1);
+		while (newCombinedRoot.size() > 1 && *newCombinedRoot.rbegin() == '\\')
+			newCombinedRoot = newCombinedRoot.substr(0, newCombinedRoot.size() - 1);
+
+		strncpy_s(szNewCurDir, TinyFTPSession::MAX_PATH_32K, "\\\\?\\", strlen("\\\\?\\"));
+		strncpy_s(szNewCurDir+strlen("\\\\?\\"), TinyFTPSession::MAX_PATH_32K-strlen("\\\\?\\"), newCombinedRoot.c_str(), newCombinedRoot.size());
+
+		// try CreateFile for directory, if success - CloseFile and return true otherwise false
+		HANDLE toClose = CreateFileA(szNewCurDir, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
+		if (INVALID_HANDLE_VALUE != toClose)
+		{
+			CloseHandle(toClose);
+			if (GetFileAttributesA(szNewCurDir) & FILE_ATTRIBUTE_DIRECTORY)
+			{
+				res = true;
+				curDirectory = newCombinedRoot.substr(docRoot.size());
+				while (curDirectory.size() > 1 && *curDirectory.rbegin() == '\\')
+					curDirectory = curDirectory.substr(0, curDirectory.size() - 1);
+			}
+		}
+
+		return res;
+	}
+
+	const char * TinyFTPSession::getCurDir() 
+	{
+		return curDirectory.c_str();
+	}
+
+	char * TinyFTPSession::translatePath(char * pathToTranslate) 
+	{
+		// replace all slashes
+		size_t inputLen = strlen(pathToTranslate);
+		if (inputLen) 
+		{
+			for (size_t pos = 0; pos < inputLen; ++pos)
+				if (pathToTranslate[pos] == '/')
+				{
+					pathToTranslate[pos] = '\\';
+				}
+		}
+
+		// check for first slash (absolute path), combine with root as necessary
+		std::string newCombinedPath;
+		if (pathToTranslate[0] == '\\')
+			newCombinedPath = docRoot + pathToTranslate;
+		else
+			newCombinedPath = docRoot + curDirectory + "\\" + pathToTranslate;
+
+		while (*newCombinedPath.rbegin() == '\\' && newCombinedPath.size() > 1)
+			newCombinedPath = newCombinedPath.substr(0,newCombinedPath.size() - 1);
+		newCombinedPath = std::regex_replace(newCombinedPath, std::regex("\\\\[^\\\\]*\\\\\\.\\."), "");
+		newCombinedPath = std::regex_replace(newCombinedPath, std::regex("\\\\\\\\"), "\\");
+		newCombinedPath = std::regex_replace(newCombinedPath, std::regex("\\.\\\\"), "");
+
+		strncpy_s(pathToTranslate, TinyFTPSession::MAX_PATH_32K, "\\\\?\\", strlen("\\\\?\\"));
+		strncpy_s(pathToTranslate + strlen("\\\\?\\"), TinyFTPSession::MAX_PATH_32K - strlen("\\\\?\\"), newCombinedPath.c_str(), newCombinedPath.size());
+
+		return pathToTranslate;
+	}
+
 }

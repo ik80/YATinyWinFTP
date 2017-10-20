@@ -17,10 +17,10 @@ namespace TinyWinFTP
 	class TinyFTPRequestHandler
 	{
 		static const size_t PASV_PORT_RANGE_START = 50000;
-		static const size_t MAX_REPLY_LEN = 4096;
+		static const size_t MAX_REPLY_LEN = 32768;
 	public:
 		/// Construct with a directory containing files to be served.
-		explicit TinyFTPRequestHandler(const std::string& inDocRoot);
+		explicit TinyFTPRequestHandler();
 
 		/// Handle a request and produce a reply.
 		void handleRequest(const TinyFTPRequest& req, TinyFTPReply& rep, TinyFTPSession* pSession);
@@ -29,8 +29,6 @@ namespace TinyWinFTP
 		void releasePassivePort(int pasvPort);
 
 	private:
-		/// The directory containing the files to be served.
-		std::string docRoot;
 		std::string ourAddrString;
 		std::string rnFrString;
 

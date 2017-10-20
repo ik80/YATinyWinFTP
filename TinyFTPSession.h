@@ -45,8 +45,10 @@ namespace TinyWinFTP
 	public:
 		static const size_t MAX_COMMAND_LEN = 384;
 		static const uint64_t TRANSMIT_FILE_LIMIT = 1024*1024*1024;
+		static const size_t MAX_PATH_32K = 32768;
+
 		/// Construct a TinyFTPSession with the given io_service.
-		explicit TinyFTPSession(asio::io_service& io_service, asio::ip::tcp::socket&& socket, TinyFTPRequestHandler& handler, TinyFTPRequestParser& parser);
+		explicit TinyFTPSession(asio::io_service& io_service, asio::ip::tcp::socket&& socket, TinyFTPRequestHandler& handler, TinyFTPRequestParser& parser, std::string docRoot);
 
 		/// closes the socket
 		~TinyFTPSession();
@@ -90,6 +92,9 @@ namespace TinyWinFTP
 		// is data op in progress
 		std::atomic_bool dataOpInProgress;
 
+		bool setCurDir(char * in_szNewCurDir);
+		const char * getCurDir();
+		char * translatePath(char * buffer);
 
 	private:
 		/// Handle completion of a control read operation.
@@ -145,6 +150,10 @@ namespace TinyWinFTP
 
 		// remote address
 		std::string portString;
+
+		// remote address
+		std::string curDirectory;
+		std::string docRoot;
 
 		TinyFTPSession(const TinyFTPSession & other) = delete;
 		TinyFTPSession(TinyFTPSession && other) = delete;

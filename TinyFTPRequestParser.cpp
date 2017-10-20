@@ -37,6 +37,12 @@ namespace TinyWinFTP
 		FTPCommands.push_back("MDTM");
 		FTPCommands.push_back("SIZE");
 		FTPCommands.push_back("SITE");
+		FTPCommands.push_back("FEAT");
+		FTPCommands.push_back("OPTS");
+		FTPCommands.push_back("feat");
+		FTPCommands.push_back("opts");
+		FTPCommands.push_back("syst");
+		FTPCommands.push_back("site");
 
 		matcher.SetKeywords(FTPCommands);
 	}

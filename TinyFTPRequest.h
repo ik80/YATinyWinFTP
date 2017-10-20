@@ -41,6 +41,12 @@ namespace TinyWinFTP
 			MDTM,
 			xSIZE,
 			SITE,
+			FEAT,
+			OPTS,
+			sFEAT,
+			sOPTS,
+			sSYST,
+			sSITE,
 			UNKNOWN_COMMAND
 		};
 

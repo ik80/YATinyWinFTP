@@ -1,12 +1,9 @@
-#include "TinyFTPPaths.h"
-
 #include "TinyFTPServer.h"
-
 
 namespace TinyWinFTP
 {
 
-	TinyFTPServer::TinyFTPServer(std::string docRoot, short port) : nextIoService(0), requestHandler(docRoot)
+	TinyFTPServer::TinyFTPServer(std::string in_docRoot, short port) : nextIoService(0), docRoot(in_docRoot)
 	{
 		size_t pool_size = std::thread::hardware_concurrency();
 		for (std::size_t i = 0; i < pool_size; ++i)
@@ -18,10 +15,6 @@ namespace TinyWinFTP
 		}
 		tcpAcceptor.reset(new asio::ip::tcp::acceptor(*ioServices[0], asio::ip::tcp::endpoint(asio::ip::tcp::v4(), port)));
 		listenSocket.reset(new asio::ip::tcp::socket(*ioServices[0]));
-		if (!docRoot.empty())
-			SetRootDir((char*)docRoot.c_str());
-		else
-			SetRootDir("\\");
 	}
 
 	/// Get an io_service to use.
@@ -38,7 +31,7 @@ namespace TinyWinFTP
 		{
 			if (!ec)
 			{
-				std::make_shared<TinyFTPSession>(getIoService(), std::move(*listenSocket), requestHandler, requestParser)->start();
+				std::make_shared<TinyFTPSession>(getIoService(), std::move(*listenSocket), requestHandler, requestParser, docRoot)->start();
 			}
 			doAccept();
 		});
