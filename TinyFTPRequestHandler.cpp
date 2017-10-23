@@ -38,7 +38,7 @@ namespace TinyWinFTP
 	void TinyFTPRequestHandler::ServiceRetrCommand(char *filename, const TinyFTPRequest& req, TinyFTPReply& rep, TinyFTPSession* pSession)
 	{
 		// File opened succesfully, so make the connection
-		asio::write(pSession->getSocket(), asio::buffer(StatusStrings::opening_binary_connection, sizeof(StatusStrings::opening_binary_connection) -1), asio::transfer_all());
+		asio::write(pSession->getSocket(), asio::buffer(StatusStrings::opening_binary_connection, sizeof(StatusStrings::opening_binary_connection) - 1), asio::transfer_all());
 
 		if (pSession->isPassiveMode())
 			pSession->startDataSocketPasv();
@@ -54,7 +54,7 @@ namespace TinyWinFTP
 	void TinyFTPRequestHandler::ServiceStorCommand(char *filename, const TinyFTPRequest& req, TinyFTPReply& rep, TinyFTPSession* pSession)
 	{
 		// File opened succesfully, so make the connection
-		asio::write(pSession->getSocket(), asio::buffer(StatusStrings::opening_binary_connection, sizeof(StatusStrings::opening_binary_connection) -1), asio::transfer_all());
+		asio::write(pSession->getSocket(), asio::buffer(StatusStrings::opening_binary_connection, sizeof(StatusStrings::opening_binary_connection) - 1), asio::transfer_all());
 
 		if (pSession->isPassiveMode())
 			pSession->startDataSocketPasv();
@@ -73,16 +73,16 @@ namespace TinyWinFTP
 		struct tm tm;
 		char RepBuf[50];
 
-		if (stat(filename, &FileStat)) 
+		if (stat(filename, &FileStat))
 		{
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) - 1), asio::transfer_all());
 			return;
 		}
 
-		if (FileStat.st_mode & _S_IFDIR) 
+		if (FileStat.st_mode & _S_IFDIR)
 		{
 			// Its a directory.
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error_not_a_plain_file, sizeof(StatusStrings::error_not_a_plain_file) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error_not_a_plain_file, sizeof(StatusStrings::error_not_a_plain_file) - 1), asio::transfer_all());
 			return;
 		}
 
@@ -103,17 +103,17 @@ namespace TinyWinFTP
 
 		default:
 			// Internal screwup!
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) - 1), asio::transfer_all());
 			break;
 		}
 		rep.content = RepBuf;
 	}
 
-	namespace 
+	namespace
 	{
-		char* numToMonth(WORD month) 
+		char* numToMonth(WORD month)
 		{
-			switch (month) 
+			switch (month)
 			{
 			case 1:
 				return "Jan";
@@ -151,7 +151,7 @@ namespace TinyWinFTP
 
 		if (!UseCtrlConn)
 		{
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::opening_connection, sizeof(StatusStrings::opening_connection) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::opening_connection, sizeof(StatusStrings::opening_connection) - 1), asio::transfer_all());
 
 			if (pSession->isPassiveMode())
 				pSession->startDataSocketPasv();
@@ -217,7 +217,7 @@ namespace TinyWinFTP
 			FindClose(hFind);
 		}
 
-		if (!UseCtrlConn) 
+		if (!UseCtrlConn)
 		{
 			if (!rep.content.empty())
 			{
@@ -225,7 +225,7 @@ namespace TinyWinFTP
 				rep.content.clear();
 			}
 			pSession->closeDataSocket();
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::transfer_complete, sizeof(StatusStrings::transfer_complete) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::transfer_complete, sizeof(StatusStrings::transfer_complete) - 1), asio::transfer_all());
 		}
 	}
 
@@ -241,15 +241,15 @@ namespace TinyWinFTP
 		switch (req.type)
 		{
 		case TinyFTPRequest::USER:
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::login_accepted, sizeof(StatusStrings::login_accepted) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::login_accepted, sizeof(StatusStrings::login_accepted) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::PASS:
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::user_logged_in, sizeof(StatusStrings::user_logged_in) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::user_logged_in, sizeof(StatusStrings::user_logged_in) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::SYST:
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::syst_string, sizeof(StatusStrings::syst_string) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::syst_string, sizeof(StatusStrings::syst_string) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::PASV:
@@ -257,7 +257,7 @@ namespace TinyWinFTP
 			pSession->setPasvPort(pasvPort);
 			snprintf(repbuf, MAX_REPLY_LEN, "227 Entering Passive Mode (%s,%d,%d)\r\n",
 				ourAddrString.c_str(), pasvPort >> 8, pasvPort & 0xff);
-			for (int a = 0; a < 50; a++) 
+			for (int a = 0; a < 50; a++)
 			{
 				if (repbuf[a] == 0) break;
 				if (repbuf[a] == '.') repbuf[a] = ',';
@@ -267,21 +267,21 @@ namespace TinyWinFTP
 
 		case TinyFTPRequest::XPWD:
 		case TinyFTPRequest::PWD: // Print working directory 
-			{
-				std::string sessionCurDir = pSession->getCurDir();
-				std::replace(sessionCurDir.begin(), sessionCurDir.end(), '\\', '/');
-				snprintf(repbuf, MAX_REPLY_LEN, "257 \"%s\"\r\n", sessionCurDir.c_str());
-				rep.content = std::string(repbuf);
-			}
-			break;
+		{
+			std::string sessionCurDir = pSession->getCurDir();
+			std::replace(sessionCurDir.begin(), sessionCurDir.end(), '\\', '/');
+			snprintf(repbuf, MAX_REPLY_LEN, "257 \"%s\"\r\n", sessionCurDir.c_str());
+			rep.content = std::string(repbuf);
+		}
+		break;
 
 		case TinyFTPRequest::NLST: // Request directory, names only.
 			if (!strncmp(buf, "-la", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-l", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-a", TinyFTPSession::MAX_PATH_32K))
 				strncpy_s(buf, "", TinyFTPSession::MAX_PATH_32K);
 			NewPath = pSession->translatePath(buf);
-			if (NewPath == NULL) 
+			if (NewPath == NULL)
 			{
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 				break;
 			}
 			ServiceListCommands(NewPath, FALSE, FALSE, req, rep, pSession);
@@ -291,9 +291,9 @@ namespace TinyWinFTP
 			if (!strncmp(buf, "-la", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-l", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-a", TinyFTPSession::MAX_PATH_32K))
 				strncpy_s(buf, "", TinyFTPSession::MAX_PATH_32K);
 			NewPath = pSession->translatePath(buf);
-			if (NewPath == NULL) 
+			if (NewPath == NULL)
 			{
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 			}
 			ServiceListCommands(NewPath, TRUE, FALSE, req, rep, pSession);
 			break;
@@ -302,25 +302,25 @@ namespace TinyWinFTP
 			if (!strncmp(buf, "-la", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-l", TinyFTPSession::MAX_PATH_32K) || !strncmp(buf, "-a", TinyFTPSession::MAX_PATH_32K))
 				strncpy_s(buf, "", TinyFTPSession::MAX_PATH_32K);
 			NewPath = pSession->translatePath(buf);
-			if (NewPath == NULL) 
+			if (NewPath == NULL)
 			{
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 				break;
 			}
 			ServiceListCommands(NewPath, TRUE, TRUE, req, rep, pSession);
 			break;
-				
+
 		case TinyFTPRequest::DELE:
 			NewPath = pSession->translatePath(buf);
-			if (NewPath == NULL) 
+			if (NewPath == NULL)
 			{
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 				break;
 			}
-			if (!DeleteFileA(NewPath)) 
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) -1), asio::transfer_all());
-			else 
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::delete_successful, sizeof(StatusStrings::delete_successful) -1), asio::transfer_all());
+			if (!DeleteFileA(NewPath))
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) - 1), asio::transfer_all());
+			else
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::delete_successful, sizeof(StatusStrings::delete_successful) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::RMD:
@@ -328,90 +328,90 @@ namespace TinyWinFTP
 		case TinyFTPRequest::XMKD:
 		case TinyFTPRequest::XRMD:
 			NewPath = pSession->translatePath(buf);
-			if (NewPath == NULL) 
+			if (NewPath == NULL)
 			{
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 				break;
 			}
 			if (req.type == TinyFTPRequest::MKD || req.type == TinyFTPRequest::XMKD) {
-				if (_mkdir(NewPath)) 
-					asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) -1), asio::transfer_all());
-				else 
-					asio::write(pSession->getSocket(), asio::buffer(StatusStrings::dir_created, sizeof(StatusStrings::dir_created) -1), asio::transfer_all());
+				if (_mkdir(NewPath))
+					asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) - 1), asio::transfer_all());
+				else
+					asio::write(pSession->getSocket(), asio::buffer(StatusStrings::dir_created, sizeof(StatusStrings::dir_created) - 1), asio::transfer_all());
 			}
-			else 
+			else
 			{
-				if (_rmdir(NewPath)) 
-					asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) -1), asio::transfer_all());
-				else 
-					asio::write(pSession->getSocket(), asio::buffer(StatusStrings::dir_removed, sizeof(StatusStrings::dir_removed) -1), asio::transfer_all());
+				if (_rmdir(NewPath))
+					asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) - 1), asio::transfer_all());
+				else
+					asio::write(pSession->getSocket(), asio::buffer(StatusStrings::dir_removed, sizeof(StatusStrings::dir_removed) - 1), asio::transfer_all());
 			}
 			break;
 
 		case TinyFTPRequest::RNFR:
 			NewPath = pSession->translatePath(buf);
-			if (NewPath) 
+			if (NewPath)
 			{
 				strncpy_s(repbuf, NewPath, MAX_REPLY_LEN);
 				rnFrString = repbuf;
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::file_exists, sizeof(StatusStrings::file_exists) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::file_exists, sizeof(StatusStrings::file_exists) - 1), asio::transfer_all());
 			}
-			else 
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+			else
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::RNTO:
 			// Must be immediately preceeded by RNFR!
 			NewPath = pSession->translatePath(buf);
 			if (rename(rnFrString.c_str(), NewPath))
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) -1), asio::transfer_all());
-			else 
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::rnto_successful, sizeof(StatusStrings::rnto_successful) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::error, sizeof(StatusStrings::error) - 1), asio::transfer_all());
+			else
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::rnto_successful, sizeof(StatusStrings::rnto_successful) - 1), asio::transfer_all());
 			rnFrString.clear();
 			break;
 
 		case TinyFTPRequest::ABOR:
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::aborted, sizeof(StatusStrings::aborted) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::aborted, sizeof(StatusStrings::aborted) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::xSIZE:
 		case TinyFTPRequest::MDTM:
 			NewPath = pSession->translatePath(buf);
-			if (NewPath == NULL) 
+			if (NewPath == NULL)
 			{
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 				break;
 			}
 			ServiceStatCommand(NewPath, req, rep, pSession);
 			break;
 
 		case TinyFTPRequest::CWD: // Change working directory
-			if (!pSession->setCurDir(buf)) 
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::cwd_failed, sizeof(StatusStrings::cwd_failed) -1), asio::transfer_all());
-			else 
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::cwd_successful, sizeof(StatusStrings::cwd_successful) -1), asio::transfer_all());
+			if (!pSession->setCurDir(buf))
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::cwd_failed, sizeof(StatusStrings::cwd_failed) - 1), asio::transfer_all());
+			else
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::cwd_successful, sizeof(StatusStrings::cwd_successful) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::TYPE: // Accept file TYPE commands, but ignore.
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::type_successful, sizeof(StatusStrings::type_successful) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::type_successful, sizeof(StatusStrings::type_successful) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::NOOP:
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::ok, sizeof(StatusStrings::ok) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::ok, sizeof(StatusStrings::ok) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::PORT: // Set the TCP/IP addres for trasnfers.
 		{
 			pSession->setPortString(req.param);
 		}
-		asio::write(pSession->getSocket(), asio::buffer(StatusStrings::port_successful, sizeof(StatusStrings::port_successful) -1), asio::transfer_all());
+		asio::write(pSession->getSocket(), asio::buffer(StatusStrings::port_successful, sizeof(StatusStrings::port_successful) - 1), asio::transfer_all());
 		break;
 
 		case TinyFTPRequest::RETR: // Retrieve File and send it
 			NewPath = pSession->translatePath(buf);
-				if (NewPath == NULL) 
+			if (NewPath == NULL)
 			{
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 				break;
 			}
 			ServiceRetrCommand(NewPath, req, rep, pSession);
@@ -419,20 +419,20 @@ namespace TinyWinFTP
 
 		case TinyFTPRequest::STOR: // Store the file.
 			NewPath = pSession->translatePath(buf);
-			if (NewPath == NULL) 
+			if (NewPath == NULL)
 			{
-				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) -1), asio::transfer_all());
+				asio::write(pSession->getSocket(), asio::buffer(StatusStrings::path_perm_error, sizeof(StatusStrings::path_perm_error) - 1), asio::transfer_all());
 				break;
 			}
 			ServiceStorCommand(NewPath, req, rep, pSession);
 			break;
 
 		case TinyFTPRequest::UNKNOWN_COMMAND:
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::unknown_command, sizeof(StatusStrings::unknown_command) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::unknown_command, sizeof(StatusStrings::unknown_command) - 1), asio::transfer_all());
 			break;
 
 		case TinyFTPRequest::QUIT:
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::bye, sizeof(StatusStrings::bye) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::bye, sizeof(StatusStrings::bye) - 1), asio::transfer_all());
 			// TODO: close session and free passv port
 
 		case TinyFTPRequest::FEAT:
@@ -443,7 +443,7 @@ namespace TinyWinFTP
 		case TinyFTPRequest::sSITE:
 		case TinyFTPRequest::SITE:
 		default: // Any command not implemented, return not recognized response.
-			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::unknown_command, sizeof(StatusStrings::unknown_command) -1), asio::transfer_all());
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::unknown_command, sizeof(StatusStrings::unknown_command) - 1), asio::transfer_all());
 			rep.content.clear();
 			break;
 		}
