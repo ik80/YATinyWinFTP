@@ -538,7 +538,7 @@ namespace TinyWinFTP
 			filename_.replace(filename_.find("\\.\\"), strlen("\\.\\"), "\\");
 		asio::error_code ec;
 		fileToSend.assign(::CreateFileA(filename_.c_str(), GENERIC_WRITE, 0, 0,
-			CREATE_NEW, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, 0), ec);
+			CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL | FILE_FLAG_OVERLAPPED, 0), ec);
 		if (fileToSend.is_open())
 		{
 			std::lock_guard<std::mutex> buffersGuard(uploadBuffers.queueMutex);

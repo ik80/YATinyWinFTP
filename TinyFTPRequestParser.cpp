@@ -43,6 +43,7 @@ namespace TinyWinFTP
 		FTPCommands.push_back("opts");
 		FTPCommands.push_back("syst");
 		FTPCommands.push_back("site");
+		FTPCommands.push_back("noop");
 
 		matcher.SetKeywords(FTPCommands);
 	}

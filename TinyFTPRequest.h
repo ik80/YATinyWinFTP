@@ -47,6 +47,7 @@ namespace TinyWinFTP
 			sOPTS,
 			sSYST,
 			sSITE,
+			sNOOP,
 			UNKNOWN_COMMAND
 		};
 

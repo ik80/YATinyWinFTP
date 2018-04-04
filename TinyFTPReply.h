@@ -7,8 +7,6 @@
 
 namespace TinyWinFTP
 {
-
-
 	/// A reply to be sent to a client.
 	struct TinyFTPReply
 	{
