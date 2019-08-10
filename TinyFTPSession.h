@@ -41,7 +41,7 @@ namespace TinyWinFTP
 	class TinyFTPSession
 		: public std::enable_shared_from_this<TinyFTPSession>
 	{
-		static constexpr const char * WELCOME_STRING = "220 TinyWinFTP ready\n";
+		static constexpr const char * WELCOME_STRING = "220 TinyWinFTP ready\r\n";
 	public:
 		static const size_t MAX_COMMAND_LEN = 384;
 		static const uint64_t TRANSMIT_FILE_LIMIT = 1024*1024*1024;
