@@ -618,8 +618,7 @@ namespace TinyWinFTP
 		while (newCombinedRoot.size() > 1 && *newCombinedRoot.rbegin() == '\\')
 			newCombinedRoot = newCombinedRoot.substr(0, newCombinedRoot.size() - 1);
 
-		strncpy_s(szNewCurDir, TinyFTPSession::MAX_PATH_32K, "\\\\?\\", strlen("\\\\?\\"));
-		strncpy_s(szNewCurDir+strlen("\\\\?\\"), TinyFTPSession::MAX_PATH_32K-strlen("\\\\?\\"), newCombinedRoot.c_str(), newCombinedRoot.size());
+		strncpy_s(szNewCurDir, TinyFTPSession::MAX_PATH_32K, newCombinedRoot.c_str(), newCombinedRoot.size());
 
 		// try CreateFile for directory, if success - CloseFile and return true otherwise false
 		HANDLE toClose = CreateFileA(szNewCurDir, GENERIC_READ | GENERIC_WRITE, FILE_SHARE_WRITE | FILE_SHARE_READ | FILE_SHARE_DELETE, 0, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, 0);
