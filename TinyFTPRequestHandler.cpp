@@ -26,13 +26,6 @@ namespace TinyWinFTP
 		curMaxPassivePort(PASV_PORT_RANGE_START),
 		reusablePassivePorts(8192)
 	{
-		struct in_addr OurAddr;
-		char hostname[256];
-		struct hostent * hostinfo;
-		gethostname(hostname, sizeof(hostname));
-		hostinfo = gethostbyname(hostname);
-		memcpy(&OurAddr, hostinfo->h_addr_list[0], sizeof(struct in_addr));
-		ourAddrString = std::string(inet_ntoa(OurAddr));
 	}
 
 	void TinyFTPRequestHandler::ServiceRetrCommand(char *filename, const TinyFTPRequest& req, TinyFTPReply& rep, TinyFTPSession* pSession)
@@ -255,7 +248,8 @@ namespace TinyWinFTP
 		case TinyFTPRequest::PASV:
 			pasvPort = acquirePassivePort();
 			pSession->setPasvPort(pasvPort);
-			snprintf(repbuf, MAX_REPLY_LEN, "227 Entering Passive Mode (%s,%d,%d)\r\n",
+			ourAddrString = pSession->getSocket().local_endpoint().address().to_string();
+			snprintf(repbuf, MAX_REPLY_LEN, "227 Entering Passive Mode (%s,%d,%d).\r\n",
 				ourAddrString.c_str(), pasvPort >> 8, pasvPort & 0xff);
 			for (int a = 0; a < 50; a++)
 			{
