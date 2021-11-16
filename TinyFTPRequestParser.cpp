@@ -6,46 +6,42 @@ namespace TinyWinFTP
 
 	TinyFTPRequestParser::TinyFTPRequestParser()
 	{
-		std::vector<std::string> FTPCommands;
-
-		FTPCommands.push_back("USER");
-		FTPCommands.push_back("PASS");
-		FTPCommands.push_back("PWD");
-		FTPCommands.push_back("CWD");
-		FTPCommands.push_back("LIST");
-		FTPCommands.push_back("NLST");
-		FTPCommands.push_back("PASV");
-		FTPCommands.push_back("RETR");
-		FTPCommands.push_back("STOR");
-		FTPCommands.push_back("PORT");
-		FTPCommands.push_back("TYPE");
-		FTPCommands.push_back("MODE");
-		FTPCommands.push_back("QUIT");
-		FTPCommands.push_back("ABOR");
-		FTPCommands.push_back("DELE");
-		FTPCommands.push_back("RMD");
-		FTPCommands.push_back("XRMD");
-		FTPCommands.push_back("MKD");
-		FTPCommands.push_back("XMKD");
-		FTPCommands.push_back("XPWD");
-		FTPCommands.push_back("SYST");
-		FTPCommands.push_back("REST");
-		FTPCommands.push_back("RNFR");
-		FTPCommands.push_back("RNTO");
-		FTPCommands.push_back("STAT");
-		FTPCommands.push_back("NOOP");
-		FTPCommands.push_back("MDTM");
-		FTPCommands.push_back("SIZE");
-		FTPCommands.push_back("SITE");
-		FTPCommands.push_back("FEAT");
-		FTPCommands.push_back("OPTS");
-		FTPCommands.push_back("feat");
-		FTPCommands.push_back("opts");
-		FTPCommands.push_back("syst");
-		FTPCommands.push_back("site");
-		FTPCommands.push_back("noop");
-
-		matcher.SetKeywords(FTPCommands);
+		commands["USER"] = 0;
+		commands["PASS"] = 1;
+		commands["PWD"] = 2;
+		commands["CWD"] = 3;
+		commands["LIST"] = 4;
+		commands["NLST"] = 5;
+		commands["PASV"] = 6;
+		commands["RETR"] = 7;
+		commands["STOR"] = 8;
+		commands["PORT"] = 9;
+		commands["TYPE"] = 10;
+		commands["MODE"] = 11;
+		commands["QUIT"] = 12;
+		commands["ABOR"] = 13;
+		commands["DELE"] = 14;
+		commands["RMD"] = 15;
+		commands["XRMD"] = 16;
+		commands["MKD"] = 17;
+		commands["XMKD"] = 18;
+		commands["XPWD"] = 19;
+		commands["SYST"] = 20;
+		commands["REST"] = 21;
+		commands["RNFR"] = 22;
+		commands["RNTO"] = 23;
+		commands["STAT"] = 24;
+		commands["NOOP"] = 25;
+		commands["MDTM"] = 26;
+		commands["SIZE"] = 27;
+		commands["SITE"] = 28;
+		commands["FEAT"] = 29;
+		commands["OPTS"] = 30;
+		commands["feat"] = 31;
+		commands["opts"] = 32;
+		commands["syst"] = 33;
+		commands["site"] = 34;
+		commands["noop"] = 35;
 	}
 
 	void TinyFTPRequestParser::reset()
@@ -77,10 +73,11 @@ namespace TinyWinFTP
 			return FAIL;
 
 		size_t commandIndex = 0;
-		if (!matcher.MatchSubstring(pBeg, pCur, commandIndex))
+		auto it = commands.find(std::string(pBeg, pCur));
+		if (it == commands.end())
 			return FAIL;
 		else
-			req.type = (TinyFTPRequest::FTPRequestType) commandIndex;
+			req.type = (TinyFTPRequest::FTPRequestType) it->second;
 
 		// skip the space
 		if (*pCur == ' ')

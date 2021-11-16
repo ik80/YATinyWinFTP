@@ -264,7 +264,10 @@ namespace TinyWinFTP
 		{
 			std::string sessionCurDir = pSession->getCurDir();
 			std::replace(sessionCurDir.begin(), sessionCurDir.end(), '\\', '/');
-			snprintf(repbuf, MAX_REPLY_LEN, "257 \"%s\"\r\n", sessionCurDir.c_str());
+			if (!sessionCurDir.empty()) // Some clients hate getting empty dir name in 257 FTP response, send them root when curDir is empty
+				snprintf(repbuf, MAX_REPLY_LEN, "257 \"%s\"\r\n", sessionCurDir.c_str());
+			else
+				snprintf(repbuf, MAX_REPLY_LEN, "257 \"/\"\r\n");
 			rep.content = std::string(repbuf);
 		}
 		break;

@@ -41,7 +41,7 @@ namespace TinyWinFTP
 	template <typename Handler>
 	void transmit_file(asio::ip::tcp::socket& socket, asio::windows::random_access_handle& file, Handler handler, uint64_t offset, LARGE_INTEGER total)
 	{
-		asio::windows::overlapped_ptr overlapped(socket.get_io_service(), handler);
+		asio::windows::overlapped_ptr overlapped(socket.get_executor(), handler);
 
 		uint64_t totalBytes = total.HighPart;
 		totalBytes = totalBytes << 32;

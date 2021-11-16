@@ -1,8 +1,9 @@
 #ifndef IK80_TINYFTPREQUESTPARSER_H_
 #define IK80_TINYFTPREQUESTPARSER_H_
 
+#include <unordered_map>
+
 #include "TinyFTPRequest.h"
-#include "FastSubstringMatcher.h"
 
 namespace TinyWinFTP
 {
@@ -26,7 +27,7 @@ namespace TinyWinFTP
 
 		ParserResult parse(TinyFTPRequest& req, char*& begin, char*& end);
 	private:
-		FastSubstringMatcher matcher;
+		std::unordered_map<std::string, size_t> commands;
 	};
 
 }
