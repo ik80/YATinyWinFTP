@@ -7,8 +7,8 @@ However it struck me as being real slow - downloads on 1GB network were mere 5MB
 with one core fully busy. Looking inside it was thread per connection and 4kb blocking 
 network calls. Of course I had to roll my own FTP server after that!
 
-Uses IOCP via asio, io_service per core, uses async (with some ugly hacks in uploads).
-Also uses TransmitFile for downloads which is virtually free. Borrows a bit of source
+Uses IOCP via asio, io_service per core, all operations are async, preallocates ~1Mb per 
+session. Uses TransmitFile for downloads which is virtually free. Borrows a bit of source
 from ftpdmin.
 
 HAS BUGS (one thing I`m sure of)
