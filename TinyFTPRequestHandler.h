@@ -7,12 +7,10 @@
 
 #include "TinyFTPReply.h"
 #include "TinyFTPRequest.h"
-
+#include "TinyFTPSession.h"
 
 namespace TinyWinFTP
 {
-	class TinyFTPSession;
-
 	/// The common handler for all incoming requests.
 	class TinyFTPRequestHandler
 	{

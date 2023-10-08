@@ -42,6 +42,8 @@ namespace TinyWinFTP
 		commands["syst"] = 33;
 		commands["site"] = 34;
 		commands["noop"] = 35;
+		commands["ALLO"] = 36;
+		commands["allo"] = 36;
 	}
 
 	void TinyFTPRequestParser::reset()

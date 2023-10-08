@@ -6,11 +6,16 @@
 #include <atomic>
 #include <mutex>
 
-#include "TinyFTPRequestHandler.h"
+#include <asio/windows/random_access_handle.hpp>
+
 #include "TinyFTPRequestParser.h"
+#include "TinyFTPReply.h"
+
 
 namespace TinyWinFTP
 {
+
+	class TinyFTPRequestHandler;
 
 	static const size_t RECV_BUFFER_SIZE = 256*1024;
 
@@ -23,8 +28,10 @@ namespace TinyWinFTP
 		bool isInitialized;
 		bool starved;
 		bool writeInProgress;
-		bool noMoreReads;
+		bool noMoreReads = false;
 		std::mutex queueMutex;
+		long long int expectedUploadSize = -1;
+		long long int processedUploadSize = -1;
 
 		/// Buffer for incoming commands.
 		std::list< std::pair<size_t, std::array<char, RECV_BUFFER_SIZE> * > > emptyBuffers;
@@ -48,19 +55,19 @@ namespace TinyWinFTP
 		static const size_t MAX_PATH_32K = 32768;
 
 		/// Construct a TinyFTPSession with the given io_service.
-		explicit TinyFTPSession(asio::io_service& io_service, asio::ip::tcp::socket&& socket, TinyFTPRequestHandler& handler, TinyFTPRequestParser& parser, std::string docRoot);
+		TinyFTPSession(asio::io_service& io_service, asio::ip::tcp::socket&& socket, TinyFTPRequestHandler* handler, TinyFTPRequestParser& parser, std::string docRoot);
 
 		/// closes the socket
 		~TinyFTPSession();
 
 		/// Get the control socket associated with the TinyFTPSession.
-		inline asio::ip::tcp::socket& TinyFTPSession::getSocket()
+		inline asio::ip::tcp::socket& getSocket()
 		{
 			return socket;
 		}
 
 		/// Get the data socket associated with the TinyFTPSession.
-		inline asio::ip::tcp::socket& TinyFTPSession::getDataSocket()
+		inline asio::ip::tcp::socket& getDataSocket()
 		{
 			return *socketData;
 		}
@@ -95,6 +102,10 @@ namespace TinyWinFTP
 		bool setCurDir(char * in_szNewCurDir);
 		const char * getCurDir();
 		char * translatePath(char * buffer);
+		void setAlloSize(int size) 
+		{
+			uploadBuffers.expectedUploadSize = size;
+		}
 
 	private:
 		/// Handle completion of a control read operation.
@@ -120,7 +131,7 @@ namespace TinyWinFTP
 		asio::io_service& service;
 
 		/// The handler used to process the incoming request.
-		TinyFTPRequestHandler& requestHandler;
+		TinyFTPRequestHandler* requestHandler;
 
 		/// Buffer for incoming commands.
 		std::array<char, MAX_COMMAND_LEN> buffer;

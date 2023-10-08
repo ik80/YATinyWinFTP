@@ -48,6 +48,8 @@ namespace TinyWinFTP
 			sSYST,
 			sSITE,
 			sNOOP,
+			ALLO,
+			sALLO,
 			UNKNOWN_COMMAND
 		};
 

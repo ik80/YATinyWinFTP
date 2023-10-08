@@ -31,7 +31,7 @@ namespace TinyWinFTP
 		{
 			if (!ec)
 			{
-				std::make_shared<TinyFTPSession>(getIoService(), std::move(*listenSocket), requestHandler, requestParser, docRoot)->start();
+				std::make_shared<TinyFTPSession>(getIoService(), std::move(*listenSocket), &requestHandler, requestParser, docRoot)->start();
 			}
 			doAccept();
 		});

@@ -104,36 +104,12 @@ namespace TinyWinFTP
 
 	namespace
 	{
-		char* numToMonth(WORD month)
+		const char* numToMonth(WORD month)
 		{
-			switch (month)
-			{
-			case 1:
-				return "Jan";
-			case 2:
-				return "Feb";
-			case 3:
-				return "Mar";
-			case 4:
-				return "Apr";
-			case 5:
-				return "May";
-			case 6:
-				return "Jun";
-			case 7:
-				return "Jul";
-			case 8:
-				return "Aug";
-			case 9:
-				return "Sep";
-			case 10:
-				return "Oct";
-			case 11:
-				return "Nov";
-			case 12:
-				return "Dec";
-			}
-			return "";
+			if (month < 1 || month > 12)
+				abort();
+			static const char* MONTH_NAMES[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+			return MONTH_NAMES[month-1];
 		}
 	}
 
@@ -396,6 +372,13 @@ namespace TinyWinFTP
 		case TinyFTPRequest::NOOP:
 			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::ok, sizeof(StatusStrings::ok) - 1), asio::transfer_all());
 			break;
+
+		case TinyFTPRequest::ALLO:
+		case TinyFTPRequest::sALLO: 
+			pSession->setAlloSize(atoi(req.param.c_str()));
+			asio::write(pSession->getSocket(), asio::buffer(StatusStrings::ok, sizeof(StatusStrings::ok) - 1), asio::transfer_all());
+			break;
+
 
 		case TinyFTPRequest::PORT: // Set the TCP/IP addres for trasnfers.
 		{
