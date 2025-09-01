@@ -54,8 +54,8 @@ namespace TinyWinFTP
 		static const uint64_t TRANSMIT_FILE_LIMIT = 1024*1024*1024;
 		static const size_t MAX_PATH_32K = 32768;
 
-		/// Construct a TinyFTPSession with the given io_service.
-		TinyFTPSession(asio::io_service& io_service, asio::ip::tcp::socket&& socket, TinyFTPRequestHandler* handler, TinyFTPRequestParser& parser, std::string docRoot);
+		/// Construct a TinyFTPSession with the given io_context.
+		TinyFTPSession(asio::io_context& io_context, asio::ip::tcp::socket&& socket, TinyFTPRequestHandler* handler, TinyFTPRequestParser& parser, std::string docRoot);
 
 		/// closes the socket
 		~TinyFTPSession();
@@ -128,7 +128,7 @@ namespace TinyWinFTP
 		std::unique_ptr<asio::ip::tcp::socket> socketData;
 
 		/// Relevant IO service
-		asio::io_service& service;
+		asio::io_context& service;
 
 		/// The handler used to process the incoming request.
 		TinyFTPRequestHandler* requestHandler;

@@ -3,7 +3,7 @@
 #include <iostream>
 #include <regex>
 
-#include <asio\io_service.hpp>
+#include <asio\io_context.hpp>
 #include <asio\placeholders.hpp>
 #include <asio\error.hpp>
 #include <asio\ip\tcp.hpp>
@@ -70,7 +70,7 @@ namespace TinyWinFTP
 		{
 			// The operation completed immediately, so a completion notification needs
 			// to be posted. When complete() is called, ownership of the OVERLAPPED-
-			// derived object passes to the io_service.
+			// derived object passes to the io_context.
 			asio::error_code ec(last_error,
 				asio::error::get_system_category());
 			overlapped.complete(ec, 0);
@@ -78,12 +78,12 @@ namespace TinyWinFTP
 		else
 		{
 			// The operation was successfully initiated, so ownership of the
-			// OVERLAPPED-derived object has passed to the io_service.
+			// OVERLAPPED-derived object has passed to the io_context.
 			overlapped.release();
 		}
 	}
 
-	TinyFTPSession::TinyFTPSession(asio::io_service& in_ioService, asio::ip::tcp::socket&& in_socket, TinyFTPRequestHandler* handler, TinyFTPRequestParser& parser, std::string in_docRoot) : service(in_ioService),
+	TinyFTPSession::TinyFTPSession(asio::io_context& in_ioService, asio::ip::tcp::socket&& in_socket, TinyFTPRequestHandler* handler, TinyFTPRequestParser& parser, std::string in_docRoot) : service(in_ioService),
 		socket(std::move(in_socket)),
 		requestHandler(handler),
 		requestParser(parser),

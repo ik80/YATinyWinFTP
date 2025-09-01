@@ -4,7 +4,7 @@
 #include <memory>
 #include <thread>
 
-#include <asio\io_service.hpp>
+#include <asio\io_context.hpp>
 #include <asio\ip\tcp.hpp>
 
 #include "TinyFTPSession.h"
@@ -24,19 +24,23 @@ namespace TinyWinFTP
 		void stop();
 
 	private:
-		/// Get an io_service to use.
-		asio::io_service& getIoService();
+		/// Get an io_context to use.
+		asio::io_context& getIoService();
 
 		// async accept incoming clients
 		void doAccept();
 
-		/// The pool of io_services.
-		std::vector<std::shared_ptr<asio::io_service> > ioServices;
+		/// The pool of io_contexts.
+		std::vector<std::shared_ptr<asio::io_context> > ioServices;
 
-		/// The work that keeps the io_services running.
-		std::vector<std::shared_ptr<asio::io_service::work> > works;
+		/// The work that keeps the io_contexts running.
 
-		/// The next io_service to use for a connection.
+		typedef asio::executor_work_guard<
+			asio::io_context::executor_type> io_context_work;
+
+		std::vector<io_context_work > works;
+
+		/// The next io_context to use for a connection.
 		std::size_t nextIoService;
 
 		/// The parser for the incoming request.
