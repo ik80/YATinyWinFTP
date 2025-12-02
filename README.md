@@ -1,4 +1,6 @@
 # YATinyWinFTP
+
+## Overview
 Fast and tiny FTP server for Windows
 
 At some point I found myself in a need of ftp server for windows to test things. 
@@ -11,10 +13,23 @@ Uses IOCP via asio, io_service per core, all operations are async, preallocates 
 session. Uses TransmitFile for downloads which is virtually free. Borrows a bit of source
 from ftpdmin.
 
-HAS BUGS (one thing I`m sure of)
+HAS BUGS (one thing I`m sure of!)
 
 HAS ZERO security hardening.
 
-Usage: TinyWinFTP.exe < AbsolutePath > < Port >
+## Building
+- Install Visual Studio Community Edition
+- Install CMake
+
+```
+mkdir build
+cd build
+cmake ..
+cmake --build .
+```
+
+
+## Usage
+Usage: TinyWinFTP.exe \<AbsolutePath\> \<Port\>
 
 Example: TinyWinFTP.exe E:\Temp 21
