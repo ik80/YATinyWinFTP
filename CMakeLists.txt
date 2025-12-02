@@ -11,8 +11,9 @@ include(FetchContent)
 FetchContent_Declare(
   asio
   GIT_REPOSITORY https://github.com/chriskohlhoff/asio.git
-  FETCHCONTENT_TRY_FIND_PACKAGE_MODE always
+  GIT_TAG asio-1-36-0
 )
+
 FetchContent_MakeAvailable(asio)
 
 # Building receiver
@@ -25,7 +26,11 @@ add_executable(YATinyWinFTP
     ${CMAKE_SOURCE_DIR}/TinyFTPSession.cpp
     ${CMAKE_SOURCE_DIR}/TinyWinFTP.cpp
 )
-target_include_directories(YATinyWinFTP PUBLIC
-    PRIVATE ${asio_SOURCE_DIR}/asio/include
+
+target_include_directories(YATinyWinFTP PRIVATE
+    ${asio_SOURCE_DIR}/asio/include
 )
+
 target_compile_definitions(YATinyWinFTP PRIVATE ASIO_STANDALONE)
+
+
