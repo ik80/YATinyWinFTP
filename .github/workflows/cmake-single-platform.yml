@@ -4,9 +4,8 @@ name: CMake on a single platform
 
 on:
   push:
-    branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
+    tags:
+      - 'v*'
 
 env:
   # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
@@ -41,3 +40,18 @@ jobs:
       with:
         name: windows-executables
         path: artifacts/
+
+    - name: Package
+      run: |
+        $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
+        mkdir release
+        Copy-Item "build\Release\*.exe" release\
+        Compress-Archive -Path "release\*" -DestinationPath "YATinyWinFTP-$version.zip"
+        
+    - name: Upload Release Asset
+      uses: softprops/action-gh-release@v1
+      with:
+        files: YATinyWinFTP-*.zip
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
