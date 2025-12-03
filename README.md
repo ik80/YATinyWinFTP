@@ -17,7 +17,11 @@ HAS BUGS (one thing I`m sure of!)
 
 HAS ZERO security hardening.
 
-## Building
+## Download
+
+[![Download Latest](https://img.shields.io/badge/Download-Windows_Executable-0078D6?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/ik80/YATinyWinFTP/releases/latest)
+
+## Build
 - Install Visual Studio Community Edition
 - Install CMake
 
