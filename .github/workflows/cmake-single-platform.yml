@@ -33,7 +33,7 @@ jobs:
 
     - name: Collect Windows binaries
       # PowerShell command to collect binaries
-      run:
+      run: |
         mkdir artifacts
         Get-ChildItem -Path build -Recurse -Include *.exe | ForEach-Object { Copy-Item $_ artifacts\ }
         
